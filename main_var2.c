@@ -141,10 +141,8 @@ check_flag(int flag, int num){
 
 void
 colorCircle(Pix** image, unsigned int H, unsigned int W, int ox, int oy, long int* color, long int rad){
-    rad = rad/2;
-
     for (int x = -rad; x < rad ; x++) {
-        int height = (int)sqrt(rad * rad - x * x);
+        int height = round(sqrt(rad * rad - x * x));
 
         if (x + ox >= W){
             continue;
@@ -167,7 +165,7 @@ colorCircle(Pix** image, unsigned int H, unsigned int W, int ox, int oy, long in
 }
 
 void
-write_line(Pix** image, unsigned int H, unsigned int W, long int start[2], long int end[2], long int color[3], long int thick){
+draw_line(Pix** image, long int start[2], long int end[2], long int color[3]){
     const int deltaX = abs(end[0] - start[0]);
     const int deltaY = abs(end[1] - start[1]);
     const int signX = start[0] < end[0] ? 1 : -1;
@@ -176,8 +174,8 @@ write_line(Pix** image, unsigned int H, unsigned int W, long int start[2], long 
     int x = start[0];
     int y = start[1];
 
-    while (((x != end[0]) || (y != end[1])) || ((x > W + thick/2) && (y > H + thick/2))){
-        colorCircle(image, H, W, x, y, color, thick);
+    while ((x != end[0]) || (y != end[1])){
+        setPix(image, x, y, color);
         
         int error2 = error * 2;
         if(error2 > -deltaY) {
@@ -187,6 +185,70 @@ write_line(Pix** image, unsigned int H, unsigned int W, long int start[2], long 
         if(error2 < deltaX) {
             error += deltaX;
             y += signY;
+        }
+    }
+}
+
+void
+write_line(Pix** image, unsigned int H, unsigned int W, long int x0, long int y0, long int xe, long int ye, long int color[3], long int thick){
+    int rad = round(thick/2);
+    colorCircle(image, H, W, x0, y0, color, rad);
+
+    int dif[] = {xe - x0, ye - y0};
+    float delta[2];
+    int max_delta = 0;
+    if (abs(dif[0]) >= abs(dif[1])){
+        max_delta = abs(dif[0]);
+    } else{
+        max_delta = abs(dif[1]);
+    }
+
+    if (max_delta != 0){
+        colorCircle(image, H, W, xe, ye, color, rad);
+
+        delta[0] = dif[0] / max_delta;
+        delta[1] = dif[1] / max_delta;
+
+        delta[0] = delta[0] / (sqrt(delta[0]*delta[0] + delta[1]*delta[1]));
+        delta[1] = delta[1] / (sqrt(delta[0]*delta[0] + delta[1]*delta[1]));
+
+        long int shtrih1_s[] = {round(x0 - rad * delta[1]), round(y0 + rad * delta[0]) - 1};
+        long int shtrih1_e[] = {round(xe - rad * delta[1]), round(ye + rad * delta[0]) - 1};
+        draw_line(image, shtrih1_s, shtrih1_e, color);
+
+        long int shtrih2_s[] = {round(x0 + rad * delta[1]), round(y0 - rad * delta[0]) - 1};
+        long int shtrih2_e[] = {round(xe + rad * delta[1]), round(ye - rad * delta[0]) - 1};
+
+        const int deltaX = abs(shtrih2_s[0] - shtrih1_s[0]);
+        const int deltaY = abs(shtrih2_s[1] - shtrih1_s[1]);
+        const int signX = shtrih1_s[0] < shtrih2_s[0] ? 1 : -1;
+        const int signY = shtrih1_s[1] < shtrih2_s[1] ? 1 : -1;
+        int error = deltaX - deltaY;
+        int x = shtrih1_s[0];
+        int y = shtrih1_s[1];
+
+        while ((x != shtrih2_s[0]) || (y != shtrih2_s[1])){
+            long int start[] = {x, y};
+            long int end[] = {x+dif[0], y+dif[1]};
+            draw_line(image, start, end, color);
+            if ((abs(delta[0]) <= 0.6) && ((start[0] < shtrih2_s[0] - 1) || (start[0] < shtrih1_s[0]))){
+                start[0] += 1;
+                end[0] += 1;
+            } else if ((abs(delta[1]) < 0.6) && ((start[1] < shtrih2_s[1] - 1) || (start[1] < shtrih1_s[1]))){
+                start[1] += 1;
+                end[1] += 1;
+            }
+            draw_line(image, start, end, color);
+            
+            int error2 = error * 2;
+            if(error2 > -deltaY) {
+                error -= deltaY;
+                x += signX;
+            }
+            if(error2 < deltaX) {
+                error += deltaX;
+                y += signY;
+            }
         }
     }
 }
@@ -412,7 +474,7 @@ main(int argc, char **argv){
         check_flag(lin, 5);
         line.start[1] = bmif->height - line.start[1];
         line.end[1] = bmif->height - line.end[1];
-        write_line(image, bmif->height, bmif->width, line.start, line.end, line.color, line.thick);
+        write_line(image, bmif->height, bmif->width, line.start[0], line.start[1], line.end[0], line.end[1], line.color, line.thick);
     } else if (inv_c > 0){
         check_flag(inv_c, 3);
         inv_cir.center[1] = bmif->height - inv_cir.center[1];
