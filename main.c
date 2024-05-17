@@ -131,6 +131,14 @@ setPix(Pix** arr, int x, int y, long int* color){
 }
 
 void
+check_flag(int flag, int num){
+    if (flag < num){
+            printf("Invalid number of flags for function.\n");
+            exit(INVALID_FLAGS);
+        }
+}
+
+void
 colorCircle(Pix** image, unsigned int H, unsigned int W, int x, int y, long int* color, long int rad){
     rad = rad/2;
     for (int i=-rad; i<=rad; i++){ //итерация по y
@@ -152,14 +160,6 @@ colorCircle(Pix** image, unsigned int H, unsigned int W, int x, int y, long int*
             }
         }
     }
-}
-
-void
-check_flag(int flag, int num){
-    if (flag < num){
-            printf("Invalid number of flags for function.\n");
-            exit(INVALID_FLAGS);
-        }
 }
 
 void
